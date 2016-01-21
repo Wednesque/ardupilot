@@ -37,7 +37,7 @@ int LinuxGPIO_RPI::getRaspberryPiVersion() const
 
         if (flag != NULL) {
             if (strstr(buffer, v2) != NULL) {
-                printf("Raspberry Pi 2 with BCM2709!\n");
+                printf("Raspberry Pi 2 with BCM2709! Hey Chris!\n");
                 fclose(fd);
                 return 2;
             } else if (strstr(buffer, v1) != NULL) {

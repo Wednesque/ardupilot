@@ -205,7 +205,7 @@ int get_raspberry_pi_version()
 
         if (flag != NULL) {
             if (strstr(buffer, v2) != NULL) {
-                printf("Raspberry Pi 2 with BCM2709!\n");
+                printf("Raspberry Pi 2 with BCM2709! It's me: Chris!\n");
                 fclose(fd);
                 return 2;
             } 
