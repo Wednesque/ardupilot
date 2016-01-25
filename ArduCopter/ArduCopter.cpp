@@ -74,6 +74,13 @@
  */
 
 #include "Copter.h"
+#include <iostream>	//*************************************************************************************CNS
+#include <fstream> //*************************************************************************************CNS
+
+std::ofstream datafile; //*************************************************************************************CNS
+//using namespace std; //*************************************************************************************CNS
+void log_data(int value); //**************************************************CNS
+
 
 #define SCHED_TASK(func) FUNCTOR_BIND(&copter, &Copter::func, void)
 
@@ -154,6 +161,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] PROGMEM = {
 
 void Copter::setup() 
 {
+	log_data(2); //**************************************************************************************************CNS
     cliSerial = hal.console;
 
     // Load the default values of variables listed in var_info[]s
@@ -187,11 +195,13 @@ void Copter::compass_accumulate(void)
  */
 void Copter::barometer_accumulate(void)
 {
+	log_data(3); //**************************************************************************************************CNS
     barometer.accumulate();
 }
 
 void Copter::perf_update(void)
 {
+	log_data(4); //**************************************************************************************************CNS
     if (should_log(MASK_LOG_PM))
         Log_Write_Performance();
     if (scheduler.debug()) {
@@ -207,6 +217,7 @@ void Copter::perf_update(void)
 
 void Copter::loop()
 {
+	log_data(5); //**************************************************************************************************CNS
     // wait for an INS sample
     ins.wait_for_sample();
 
@@ -242,7 +253,7 @@ void Copter::loop()
 // Main loop - 400hz
 void Copter::fast_loop()
 {
-
+	log_data(6); //**************************************************************************************************CNS
     // IMU DCM Algorithm
     // --------------------
     read_AHRS();
@@ -283,6 +294,7 @@ void Copter::fast_loop()
 // called at 100hz
 void Copter::rc_loop()
 {
+	log_data(7); //**************************************************************************************************CNS
     // Read radio and 3-position switch on radio
     // -----------------------------------------
     read_radio();
@@ -293,6 +305,7 @@ void Copter::rc_loop()
 // ---------------------------
 void Copter::throttle_loop()
 {
+	log_data(8); //**************************************************************************************************CNS
     // get altitude and climb rate from inertial lib
     read_inertial_altitude();
 
@@ -315,6 +328,7 @@ void Copter::throttle_loop()
 // should be run at 50hz
 void Copter::update_mount()
 {
+	log_data(9); //**************************************************************************************************CNS
 #if MOUNT == ENABLED
     // update camera mount's position
     camera_mount.update();
@@ -329,6 +343,7 @@ void Copter::update_mount()
 // should be called at 10hz
 void Copter::update_batt_compass(void)
 {
+	log_data(10); //**************************************************************************************************CNS
     // read battery before compass because it may be used for motor interference compensation
     read_battery();
 
@@ -347,6 +362,7 @@ void Copter::update_batt_compass(void)
 // should be run at 10hz
 void Copter::ten_hz_logging_loop()
 {
+	log_data(11); //**************************************************************************************************CNS
     // log attitude data if we're not already logging at the higher rate
     if (should_log(MASK_LOG_ATTITUDE_MED) && !should_log(MASK_LOG_ATTITUDE_FAST)) {
         Log_Write_Attitude();
@@ -382,6 +398,7 @@ void Copter::ten_hz_logging_loop()
 // should be run at 50hz
 void Copter::fifty_hz_logging_loop()
 {
+	log_data(12); //**************************************************************************************************CNS
 #if HIL_MODE != HIL_MODE_DISABLED
     // HIL for a copter needs very fast update of the servo values
     gcs_send_message(MSG_RADIO_OUT);
@@ -410,6 +427,7 @@ void Copter::fifty_hz_logging_loop()
 // should be run at the MAIN_LOOP_RATE
 void Copter::full_rate_logging_loop()
 {
+	log_data(13); //**************************************************************************************************CNS
     if (should_log(MASK_LOG_IMU_FAST) && !should_log(MASK_LOG_IMU_RAW)) {
         DataFlash.Log_Write_IMU(ins);
     }
@@ -421,6 +439,7 @@ void Copter::full_rate_logging_loop()
 // three_hz_loop - 3.3hz loop
 void Copter::three_hz_loop()
 {
+	log_data(14); //**************************************************************************************************CNS
     // check if we've lost contact with the ground station
     failsafe_gcs_check();
 
@@ -442,6 +461,7 @@ void Copter::three_hz_loop()
 // one_hz_loop - runs at 1Hz
 void Copter::one_hz_loop()
 {
+	log_data(15); //**************************************************************************************************CNS
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(DATA_AP_STATE, ap.value);
     }
@@ -502,6 +522,7 @@ void Copter::one_hz_loop()
 // called at 50hz
 void Copter::update_GPS(void)
 {
+	log_data(16); //**************************************************************************************************CNS
     static uint32_t last_gps_reading[GPS_MAX_INSTANCES];   // time of last gps message
     bool gps_updated = false;
 
@@ -539,6 +560,7 @@ void Copter::update_GPS(void)
 
 void Copter::init_simple_bearing()
 {
+	log_data(17); //**************************************************************************************************CNS
     // capture current cos_yaw and sin_yaw values
     simple_cos_yaw = ahrs.cos_yaw();
     simple_sin_yaw = ahrs.sin_yaw();
@@ -557,6 +579,7 @@ void Copter::init_simple_bearing()
 // update_simple_mode - rotates pilot input if we are in simple mode
 void Copter::update_simple_mode(void)
 {
+	log_data(18); //**************************************************************************************************CNS
     float rollx, pitchx;
 
     // exit immediately if no new radio frame or not in simple mode
@@ -586,6 +609,7 @@ void Copter::update_simple_mode(void)
 // should be called after home_bearing has been updated
 void Copter::update_super_simple_bearing(bool force_update)
 {
+	log_data(19); //**************************************************************************************************CNS
     // check if we are in super simple mode and at least 10m from home
     if(force_update || (ap.simple_mode == 2 && home_distance > SUPER_SIMPLE_RADIUS)) {
         // check the bearing to home has changed by at least 5 degrees
@@ -600,6 +624,7 @@ void Copter::update_super_simple_bearing(bool force_update)
 
 void Copter::read_AHRS(void)
 {
+	log_data(20); //**************************************************************************************************CNS
     // Perform IMU calculations and get attitude info
     //-----------------------------------------------
 #if HIL_MODE != HIL_MODE_DISABLED
@@ -613,6 +638,7 @@ void Copter::read_AHRS(void)
 // read baro and sonar altitude at 10hz
 void Copter::update_altitude()
 {
+	log_data(21); //**************************************************************************************************CNS
     // read in baro altitude
     read_barometer();
 
@@ -633,8 +659,23 @@ void loop(void);
 
 void setup(void)
 {
+	//std::ofstream datafile; //*************************************************************************************CNS
+	datafile.open("data_log_file.txt"); //, std::ofstream::out | std::ofstream::app); //***********************************CNS
+ 	//datafile = fopen("data_log_file.txt", "r"); //*********************************************************************CNS
+
+	log_data(1); //**************************************************************************************************CNS
     copter.setup();
 }
+
+void log_data(int value) //****************************************************************************************CNS
+{
+//	ofstream cns_data; //*************************************************************************************CNS
+//	cns_data.open("cns_datalogfile.txt"); //********************************************************************CNS
+	datafile << value << std::endl; //****************************************************************************CNS
+	
+}
+
+
 void loop(void)
 {
     copter.loop();
