@@ -76,6 +76,8 @@
 #include "Copter.h"
 #include <iostream>	//*************************************************************************************CNS
 #include <fstream> //*************************************************************************************CNS
+#include <ctime> //*************************************************************************************CNS
+#include <string> //*************************************************************************************CNS
 
 std::ofstream datafile; //*************************************************************************************CNS
 //using namespace std; //*************************************************************************************CNS
@@ -660,7 +662,18 @@ void loop(void);
 void setup(void)
 {
 	//std::ofstream datafile; //*************************************************************************************CNS
-	datafile.open("data_log_file.txt"); //, std::ofstream::out | std::ofstream::app); //***********************************CNS
+//	time_t rawtime;
+//	struct tm * timeinfo;
+//	time (&rawtime);
+//	timeinfo = localtime(&rawtime);   < -- these 4 lines for <time.h>
+	
+	std::time_t result = std::time(nullptr);
+	std::string time_str = std::to_string(std::time(nullptr));
+	std::string filename = ("data_log_file_");
+	filename.append(time_str); // asctime(timeinfo) );
+	//filename.append(std::asctime(std::localtime(&result))); // asctime(timeinfo) );
+	filename.append(".txt");
+	datafile.open(filename); //, std::ofstream::out | std::ofstream::app); //***********************************CNS
  	//datafile = fopen("data_log_file.txt", "r"); //*********************************************************************CNS
 
 	log_data(1); //**************************************************************************************************CNS
