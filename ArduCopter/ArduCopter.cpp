@@ -76,12 +76,18 @@
 #include "Copter.h"
 #include <iostream>	//*************************************************************************************CNS
 #include <fstream> //*************************************************************************************CNS
-#include <ctime> //*************************************************************************************CNS
+#include <ctime> //****************************************************for unix time**********************CNS
+#include <time.h> //*********************************************for wall time with decimal***************CNS
+#include <sys/time.h> //*****************************************for wall time with decimal***************CNS
 #include <string> //*************************************************************************************CNS
+#include <sys/types.h>	//*********************************************for getpid**************************CNS
+#include <unistd.h>	//*************************************************for getpid**************************CNS
+
 
 std::ofstream datafile; //*************************************************************************************CNS
-//using namespace std; //*************************************************************************************CNS
-void log_data(int value); //**************************************************CNS
+enum Request{ fcnstart, fcnend, setupfunction };
+void log_data(std::string location, Request request); //*******************************************************************CNS
+double get_wall_time(); //*************************************************************************************CNS
 
 
 #define SCHED_TASK(func) FUNCTOR_BIND(&copter, &Copter::func, void)
@@ -158,12 +164,20 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] PROGMEM = {
 #ifdef USERHOOK_SUPERSLOWLOOP
     { SCHED_TASK(userhook_SuperSlowLoop),400,   75 },
 #endif
+
+#ifndef __FUNCTION_NAME__  //****************************************************************************************CNS
+    #ifdef WIN32   //WINDOWS  
+        #define __FUNCTION_NAME__   __FUNCTION__  
+    #else          //*NIX
+        #define __FUNCTION_NAME__   __func__ 
+    #endif
+#endif  //***********************************************************************************************************CNS
 };
 
 
 void Copter::setup() 
 {
-	log_data(2); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     cliSerial = hal.console;
 
     // Load the default values of variables listed in var_info[]s
@@ -180,6 +194,8 @@ void Copter::setup()
     // setup initial performance counters
     perf_info_reset();
     fast_loopTimer = hal.scheduler->micros();
+    
+    log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 /*
@@ -187,9 +203,11 @@ void Copter::setup()
  */
 void Copter::compass_accumulate(void)
 {
+	log_data(__FUNCTION_NAME__,fcnstart); //************************************************************************************************CNS
     if (g.compass_enabled) {
         compass.accumulate();
     }
+    log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 /*
@@ -197,13 +215,15 @@ void Copter::compass_accumulate(void)
  */
 void Copter::barometer_accumulate(void)
 {
-	log_data(3); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     barometer.accumulate();
+    log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
+
 }
 
 void Copter::perf_update(void)
 {
-	log_data(4); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     if (should_log(MASK_LOG_PM))
         Log_Write_Performance();
     if (scheduler.debug()) {
@@ -215,11 +235,12 @@ void Copter::perf_update(void)
     }
     perf_info_reset();
     pmTest1 = 0;
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 void Copter::loop()
 {
-	log_data(5); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // wait for an INS sample
     ins.wait_for_sample();
 
@@ -249,13 +270,14 @@ void Copter::loop()
     // call until scheduler.tick() is called again
     uint32_t time_available = (timer + MAIN_LOOP_MICROS) - micros();
     scheduler.run(time_available);
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 
 // Main loop - 400hz
 void Copter::fast_loop()
 {
-	log_data(6); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // IMU DCM Algorithm
     // --------------------
     read_AHRS();
@@ -290,24 +312,26 @@ void Copter::fast_loop()
     if (should_log(MASK_LOG_ANY)) {
         Log_Sensor_Health();
     }
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // rc_loops - reads user input from transmitter/receiver
 // called at 100hz
 void Copter::rc_loop()
 {
-	log_data(7); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // Read radio and 3-position switch on radio
     // -----------------------------------------
     read_radio();
     read_control_switch();
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // throttle_loop - should be run at 50 hz
 // ---------------------------
 void Copter::throttle_loop()
 {
-	log_data(8); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // get altitude and climb rate from inertial lib
     read_inertial_altitude();
 
@@ -324,13 +348,14 @@ void Copter::throttle_loop()
     // update trad heli swash plate movement
     heli_update_landing_swash();
 #endif
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // update_mount - update camera mount position
 // should be run at 50hz
 void Copter::update_mount()
 {
-	log_data(9); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
 #if MOUNT == ENABLED
     // update camera mount's position
     camera_mount.update();
@@ -339,13 +364,14 @@ void Copter::update_mount()
 #if CAMERA == ENABLED
     camera.trigger_pic_cleanup();
 #endif
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // update_batt_compass - read battery and compass
 // should be called at 10hz
 void Copter::update_batt_compass(void)
 {
-	log_data(10); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // read battery before compass because it may be used for motor interference compensation
     read_battery();
 
@@ -358,13 +384,14 @@ void Copter::update_batt_compass(void)
             DataFlash.Log_Write_Compass(compass);
         }
     }
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // ten_hz_logging_loop
 // should be run at 10hz
 void Copter::ten_hz_logging_loop()
 {
-	log_data(11); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // log attitude data if we're not already logging at the higher rate
     if (should_log(MASK_LOG_ATTITUDE_MED) && !should_log(MASK_LOG_ATTITUDE_FAST)) {
         Log_Write_Attitude();
@@ -394,13 +421,14 @@ void Copter::ten_hz_logging_loop()
 #if FRAME_CONFIG == HELI_FRAME
     Log_Write_Heli();
 #endif
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // fifty_hz_logging_loop
 // should be run at 50hz
 void Copter::fifty_hz_logging_loop()
 {
-	log_data(12); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
 #if HIL_MODE != HIL_MODE_DISABLED
     // HIL for a copter needs very fast update of the servo values
     gcs_send_message(MSG_RADIO_OUT);
@@ -423,25 +451,27 @@ void Copter::fifty_hz_logging_loop()
         DataFlash.Log_Write_IMU(ins);
     }
 #endif
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // full_rate_logging_loop
 // should be run at the MAIN_LOOP_RATE
 void Copter::full_rate_logging_loop()
 {
-	log_data(13); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     if (should_log(MASK_LOG_IMU_FAST) && !should_log(MASK_LOG_IMU_RAW)) {
         DataFlash.Log_Write_IMU(ins);
     }
     if (should_log(MASK_LOG_IMU_FAST) || should_log(MASK_LOG_IMU_RAW)) {
         DataFlash.Log_Write_IMUDT(ins);
     }
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // three_hz_loop - 3.3hz loop
 void Copter::three_hz_loop()
 {
-	log_data(14); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // check if we've lost contact with the ground station
     failsafe_gcs_check();
 
@@ -458,12 +488,13 @@ void Copter::three_hz_loop()
 
     // update ch6 in flight tuning
     tuning();
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // one_hz_loop - runs at 1Hz
 void Copter::one_hz_loop()
 {
-	log_data(15); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(DATA_AP_STATE, ap.value);
     }
@@ -519,12 +550,13 @@ void Copter::one_hz_loop()
 
     // enable/disable raw gyro/accel logging
     ins.set_raw_logging(should_log(MASK_LOG_IMU_RAW));
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // called at 50hz
 void Copter::update_GPS(void)
 {
-	log_data(16); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     static uint32_t last_gps_reading[GPS_MAX_INSTANCES];   // time of last gps message
     bool gps_updated = false;
 
@@ -558,11 +590,12 @@ void Copter::update_GPS(void)
 #endif
         }
     }
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 void Copter::init_simple_bearing()
 {
-	log_data(17); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // capture current cos_yaw and sin_yaw values
     simple_cos_yaw = ahrs.cos_yaw();
     simple_sin_yaw = ahrs.sin_yaw();
@@ -576,12 +609,13 @@ void Copter::init_simple_bearing()
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(DATA_INIT_SIMPLE_BEARING, ahrs.yaw_sensor);
     }
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // update_simple_mode - rotates pilot input if we are in simple mode
 void Copter::update_simple_mode(void)
 {
-	log_data(18); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     float rollx, pitchx;
 
     // exit immediately if no new radio frame or not in simple mode
@@ -605,13 +639,14 @@ void Copter::update_simple_mode(void)
     // rotate roll, pitch input from north facing to vehicle's perspective
     channel_roll->control_in = rollx*ahrs.cos_yaw() + pitchx*ahrs.sin_yaw();
     channel_pitch->control_in = -rollx*ahrs.sin_yaw() + pitchx*ahrs.cos_yaw();
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // update_super_simple_bearing - adjusts simple bearing based on location
 // should be called after home_bearing has been updated
 void Copter::update_super_simple_bearing(bool force_update)
 {
-	log_data(19); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // check if we are in super simple mode and at least 10m from home
     if(force_update || (ap.simple_mode == 2 && home_distance > SUPER_SIMPLE_RADIUS)) {
         // check the bearing to home has changed by at least 5 degrees
@@ -622,11 +657,12 @@ void Copter::update_super_simple_bearing(bool force_update)
             super_simple_sin_yaw = sinf(angle_rad);
         }
     }
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 void Copter::read_AHRS(void)
 {
-	log_data(20); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // Perform IMU calculations and get attitude info
     //-----------------------------------------------
 #if HIL_MODE != HIL_MODE_DISABLED
@@ -635,12 +671,13 @@ void Copter::read_AHRS(void)
 #endif
 
     ahrs.update();
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 // read baro and sonar altitude at 10hz
 void Copter::update_altitude()
 {
-	log_data(21); //**************************************************************************************************CNS
+	log_data(__FUNCTION_NAME__,fcnstart); //**************************************************************************************************CNS
     // read in baro altitude
     read_barometer();
 
@@ -651,6 +688,7 @@ void Copter::update_altitude()
     if (should_log(MASK_LOG_CTUN)) {
         Log_Write_Control_Tuning();
     }
+	log_data(__FUNCTION_NAME__,fcnend); //************************************************************************************************CNS
 }
 
 /*
@@ -661,32 +699,61 @@ void loop(void);
 
 void setup(void)
 {
-	//std::ofstream datafile; //*************************************************************************************CNS
-//	time_t rawtime;
-//	struct tm * timeinfo;
-//	time (&rawtime);
-//	timeinfo = localtime(&rawtime);   < -- these 4 lines for <time.h>
 	
-	std::time_t result = std::time(nullptr);
-	std::string time_str = std::to_string(std::time(nullptr));
-	std::string filename = ("data_log_file_");
-	filename.append(time_str); // asctime(timeinfo) );
-	//filename.append(std::asctime(std::localtime(&result))); // asctime(timeinfo) );
-	filename.append(".txt");
-	datafile.open(filename); //, std::ofstream::out | std::ofstream::app); //***********************************CNS
- 	//datafile = fopen("data_log_file.txt", "r"); //*********************************************************************CNS
+	std::string time_str = std::to_string(std::time(nullptr)); //********************************************************CNS
+	std::string filename = ("data_log_file_"); //************************************************************************CNS
+	filename.append(time_str); //****************************************************************************************CNS
 
-	log_data(1); //**************************************************************************************************CNS
+	filename.append(".txt"); //****************************************************************************************CNS
+	datafile.open(filename); //****************************************************************************************CNS
+
+	log_data(__FUNCTION_NAME__,setupfunction); //********************************************************************************************CNS
+	
     copter.setup();
 }
 
-void log_data(int value) //****************************************************************************************CNS
+
+void log_data(std::string location, Request request) //**************************************************************************************CNS
 {
-//	ofstream cns_data; //*************************************************************************************CNS
-//	cns_data.open("cns_datalogfile.txt"); //********************************************************************CNS
-	datafile << value << std::endl; //****************************************************************************CNS
+	// time
+	std::string time_str = std::to_string( get_wall_time() );    //std::time(nullptr));
+	//pid
+	std::string pid = std::to_string(getpid());
+	//concatinate
+	
+	std::string newline = pid+" "+time_str+" "+location;
+	switch(request)
+	{
+		case fcnstart:
+		{
+			newline +="_start";
+			break;
+		}
+		case fcnend:
+		{
+			newline +="_end";
+			break;
+		}
+		case setupfunction:
+		{
+			newline +="_setup";
+			break;
+		}
+	}
+	//write
+	datafile << newline << std::endl; //******************************************************************************CNS
 	
 }
+
+double get_wall_time() //*******************************************************************************************CNS
+{
+    struct timeval time;
+    if (gettimeofday(&time,NULL)){
+        //  Handle error
+        return 0;
+    }
+    return (double)time.tv_sec + (double)time.tv_usec * .000001;
+} //*******************************************************************************************************************CNS
 
 
 void loop(void)
