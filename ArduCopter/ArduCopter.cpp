@@ -5,12 +5,10 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
-
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -76,6 +74,7 @@
 #include "Copter.h"
 #include <iostream>	//*************************************************************************************CNS
 #include <fstream> //*************************************************************************************CNS
+#include <sstream> //*******************************for stringstream buffer*********************************CNS
 #include <ctime> //****************************************************for unix time**********************CNS
 #include <time.h> //*********************************************for wall time with decimal***************CNS
 #include <sys/time.h> //*****************************************for wall time with decimal***************CNS
@@ -85,6 +84,10 @@
 
 
 std::ofstream datafile; //*************************************************************************************CNS
+std::ostringstream databuffer; //*************************************************************************************CNS
+int codelevel_is = 0; //*************************************************************************************CNS
+int codelevel_was = 0; //*************************************************************************************CNS
+int dataentries; //*************************************************************************************CNS
 enum Request{ fcnstart, fcnend, setupfunction };
 void log_data(std::string location, Request request); //*******************************************************************CNS
 double get_wall_time(); //*************************************************************************************CNS
@@ -620,6 +623,7 @@ void Copter::update_simple_mode(void)
 
     // exit immediately if no new radio frame or not in simple mode
     if (ap.simple_mode == 0 || !ap.new_radio_frame) {
+		log_data(__FUNCTION_NAME__,fcnend);
         return;
     }
 
@@ -706,44 +710,51 @@ void setup(void)
 
 	filename.append(".txt"); //****************************************************************************************CNS
 	datafile.open(filename); //****************************************************************************************CNS
+	dataentries = 0;
 
-	log_data(__FUNCTION_NAME__,setupfunction); //********************************************************************************************CNS
-	
-    copter.setup();
+	copter.setup();
 }
 
 
 void log_data(std::string location, Request request) //**************************************************************************************CNS
 {
-	// time
-	std::string time_str = std::to_string( get_wall_time() );    //std::time(nullptr));
-	//pid
-	std::string pid = std::to_string(getpid());
-	//concatinate
+	codelevel_was = codelevel_is;
 	
-	std::string newline = pid+" "+time_str+" "+location;
+	databuffer << getpid() <<" "<< std::to_string(get_wall_time()) <<" "<< location;
+	
 	switch(request)
 	{
 		case fcnstart:
 		{
-			newline +="_start";
+			codelevel_is++;
+			databuffer << "_start(" << codelevel_was << "," << codelevel_is << ") = " << codelevel_is << std::endl;
 			break;
 		}
 		case fcnend:
 		{
-			newline +="_end";
+			codelevel_is--;
+			databuffer << "_end(" << std::to_string(codelevel_was) << ") = " << std::to_string(codelevel_is) << std::endl;
 			break;
 		}
-		case setupfunction:
+		default:
 		{
-			newline +="_setup";
-			break;
+			databuffer << std::endl;
 		}
 	}
-	//write
-	datafile << newline << std::endl; //******************************************************************************CNS
 	
-}
+	dataentries++; //increase counter for number of lines in buffer
+	
+	if (dataentries > 99) // every 100 entries
+	{
+		databuffer << getpid() <<" "<< std::to_string(get_wall_time()) <<" "<<  "Depositting a chunk" << std::endl;
+		datafile << databuffer.str(); // dump buffer data into file
+		databuffer.clear(); 
+		databuffer.str(std::string()); // empty buffer
+		dataentries = 0; //reset counter
+	}
+
+} //******************************************************************************CNS
+
 
 double get_wall_time() //*******************************************************************************************CNS
 {
@@ -762,4 +773,3 @@ void loop(void)
 }
 
 AP_HAL_MAIN();
-
